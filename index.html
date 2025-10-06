@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absensi Lokasi – SPPG MBG</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f7f7f7; padding: 20px; }
+        .container { background: #fff; max-width: 400px; margin: auto; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; }
+        input, select, button { width: 100%; margin: 10px 0; padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        p { text-align: center; font-size: 14px; color: #555; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🕒 Absensi Lokasi – SPPG MBG</h2>
+        <label>Nama / ID:</label>
+        <input type="text" id="nama" placeholder="Masukkan nama atau ID" required>
+        
+        <label>Bagian:</label>
+        <select id="bagian" required>
+            <option value="">-- Pilih Bagian --</option>
+            <option value="Kepala SPPG">Kepala SPPG</option>
+            <option value="Ahli Gizi">Ahli Gizi</option>
+            <option value="Akuntan">Akuntan</option>
+            <option value="Aslap">Aslap</option>
+            <option value="Pemorsian">Pemorsian</option>
+            <option value="Pengantaran">Pengantaran</option>
+            <option value="Pengemasan">Pengemasan</option>
+        </select>
+
+        <button onclick="getLocation()">Absen Sekarang</button>
+        <button onclick="showCoords()">Lihat Koordinat</button>
+        <p id="status"></p>
+    </div>
+
+    <script>
+        const kantorLat = -5.1770058;
+        const kantorLng = 119.4757625;
+        const radius = 200; // meter
+
+        function showCoords() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    document.getElementById('status').innerText = 
+                        `Lokasi Anda: ${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
+                });
+            }
+        }
+
+        function getLocation() {
+            const nama = document.getElementById("nama").value.trim();
+            const bagian = document.getElementById("bagian").value;
+            if (!nama || !bagian) {
+                alert("Harap isi nama dan pilih bagian terlebih dahulu.");
+                return;
+            }
+
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    const jarak = hitungJarak(lat, lng, kantorLat, kantorLng);
+                    let statusPesan = "";
+
+                    if (jarak <= radius) {
+                        statusPesan = "✅ Absen berhasil! Anda berada di area kantor.";
+                        kirimData(nama, bagian, lat, lng, jarak, "Diterima");
+                    } else {
+                        statusPesan = "❌ Absen gagal: Anda berada di luar area kantor. Silakan absen di lokasi yang sesuai.";
+                        kirimData(nama, bagian, lat, lng, jarak, "Diluar radius");
+                    }
+                    document.getElementById("status").innerText = statusPesan;
+                }, () => {
+                    alert("Gagal mendapatkan lokasi. Harap izinkan akses lokasi.");
+                });
+            }
+        }
+
+        function hitungJarak(lat1, lon1, lat2, lon2) {
+            const R = 6371e3;
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function kirimData(nama, bagian, lat, lng, jarak, status) {
+            const url = "https://script.google.com/macros/s/AKfycbzOpfGXpiwDogWyZrMMJbnO5Y-lXuF6JEE9Zuu4E4JyPipqkMyRghyT-uPU27QvX6VZ2A/exec"; // Ganti dengan URL Web App Google Apps Script kamu
+            fetch(url, {
+                method: "POST",
+                body: JSON.stringify({ nama, bagian, lat, lng, jarak, status }),
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+    </script>
+</body>
+</html>
